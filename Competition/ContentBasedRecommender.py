@@ -11,13 +11,13 @@ import multiprocessing as mp
 
 import pdb
 
-from pyspark import SparkContext, SparkConf
+#from pyspark import SparkContext, SparkConf
 
 logger = logging.getLogger(__name__)
 
 #conf = SparkConf().setAppName("RecSys").setMaster("spark://Fernandos-MacBook-Pro.local:7077")
-conf = SparkConf().setAppName("RecSys")
-sc = SparkContext(conf=conf)
+#conf = SparkConf().setAppName("RecSys")
+#sc = SparkContext(conf=conf)
 
 class ContentBased(object):
     """ContentBased recommender"""
@@ -79,57 +79,68 @@ def create_item_matrix(data,title_dict,tags_dict, no_items):
     matrix = np.array(matrix)
     return matrix
 
-def buildSimilaritiesMatrix(icm):
-    # Creating the python dict for parallelization.
-    data = list(
-                zip(
-                    icm[0:,0],
-                    icm[:,1:]
-                )
-           )
-
-    distData = sc.parallelize(data) # Parallelizing data.
-##    Obtained from: http://apache-spark-user-list.1001560.n3.nabble.com/Computing-cosine-similiarity-using-pyspark-td6254.html
-    #sim = distData.cartesian(distData).map(lambda ((k1,v1),(k2,v2)): ((k1,k2),1-spatial.distance.cosine(v1,v2))).collect()
-    sim = distData.cartesian(distData).map(lambda kv: ((kv[0][0],kv[1][0]),1-spatial.distance.cosine(kv[0][1],kv[1][1]))).collect()
-    return sim
-    
-
-
-
-
 #def buildSimilaritiesMatrix(icm):
-#    # Just create the matrix as the formula given in class.
-#    matrix = icm[:,1:]
-#    sij = np.empty(shape = (len(icm),len(icm)))
-#    
-#    # Parallelization.
-#    #pool = mp.Pool(mp.cpu_count())
-#    num_cores = mp.cpu_count()
-#    n_rows = 41989
-#    #pdb.set_trace()
-#    arguments = [(n_rows,matrix[n_rows*i:n_rows*(i+1),:]) for i in range(0,mp.cpu_count())] # Split the data (for my pc is 1,5)
-#    results = joblib.Parallel(n_jobs =num_cores)(joblib.delayed(calculateCosine) (row,mat) for row,mat in arguments)
-##    [(n_rows,matrix[n_rows*i:n_rows*(i+1),:]) for i in range(0,mp.cpu_count())] # Split the data (for my pc is 1,5)
-##    results = [pool.apply_async(calculateCosine,arg) for arg in arguments ]
+#    # Shrinking factor.
+#    H = 3
+#    # Creating the python dict for parallelization.
+#    data = list(
+#                zip(
+#                    icm[0:,0],
+#                    icm[:,1:]
+#                )
+#           )
+#
+#    distData = sc.parallelize(data) # Parallelizing data.
+###    Obtained from: http://apache-spark-user-list.1001560.n3.nabble.com/Computing-cosine-similiarity-using-pyspark-td6254.html
+#    #sim = distData.cartesian(distData).map(lambda kv: ((kv[0][0],kv[1][0]),1-spatial.distance.cosine(kv[0][1],kv[1][1]))).collect()
+#    sim = distData.cartesian(distData)\
+#            .map(\
+#                lambda kv:\
+#                    ((kv[0][0],kv[1][0]),\
+#                    np.dot(kv[0][1],kv[1][1]) / (np.linalg.norm(kv[0][1])*np.linalg.norm(kv[1][1]) + H)))\
+#            .collect()
+#    return sim
+
+
+
+
+
+def buildSimilaritiesMatrix(icm):
+    k = 100
+    # Just create the matrix as the formula given in class.
+    #matrix = icm[:,1:]
+    sij = np.empty(shape = (len(icm),len(icm)))
+    
+    # Parallelization.
+    #pool = mp.Pool(mp.cpu_count())
+    num_cores = mp.cpu_count()
+    n_rows = 4
+    #pdb.set_trace()
+    arguments = [(n_rows,icm[n_rows*i:,:],i,k) for i in range(0,41989)] # Split the data (for my pc is 1,5)
+    results = joblib.Parallel(n_jobs = num_cores)(joblib.delayed(calculateCosine) (row,mat,process_number,k) for row,mat,process_number,k in arguments)
+#    [(n_rows,matrix[n_rows*i:n_rows*(i+1),:]) for i in range(0,mp.cpu_count())] # Split the data (for my pc is 1,5)
+#    results = [pool.apply_async(calculateCosine,arg) for arg in arguments ]
+#
 #
 #    i = 0
-#    result = tuple(results)
-#    
-#    sij = np.vstack(result)
-#    
-#    H = 3 # Shrink Term
-#    return sij
-##    for i in range(len(icm)):
-##        v1 = matrix[i,:]
-##        for j in range(i+1,len(icm)):
-##            tic = dt.now()
-##            v2 = matrix[j,:]
-##            sij[i,j] = ( np.dot(v1,v2) ) / ( np.linalg.norm(v1,2) * np.linalg.norm(v2,2) + H)
-##            logger.info('Training completed built in {}'.format(dt.now() - tic))
-##            break
-##        break
+    sim = tuple(results[i][0] for i in range(len(results)))
+    id = tuple([results[i][1] for i in range(len(results))])
 #
+    sij = np.vstack(sim)
+    ids = np.vstack(id)
+#    
+    #H = 3 # Shrink Term
+    return [sij,ids]
+#    for i in range(len(icm)):
+#        v1 = matrix[i,:]
+#        for j in range(i+1,len(icm)):
+#            tic = dt.now()
+#            v2 = matrix[j,:]
+#            sij[i,j] = ( np.dot(v1,v2) ) / ( np.linalg.norm(v1,2) * np.linalg.norm(v2,2) + H)
+#            logger.info('Training completed built in {}'.format(dt.now() - tic))
+#            break
+#        break
+
 #    for i in range(len(icm)):
 #        print(i)
 #        v1 = matrix[i,:]
@@ -158,13 +169,26 @@ def buildSimilaritiesMatrix(icm):
 #        wv1 Pool(5) as p:
 #            print(p.map(f, [1, 2, 3]))
 
-#def calculateCosine(n_rows,matrix):
-#    sij = np.empty(shape = (n_rows,len(matrix)))
+def calculateCosine(n_rows,matrix,process_number,k):
+    sim_ij = np.zeros(shape = (n_rows,k))
+    obj_ij = np.zeros(shape = (n_rows,k))
+
+    for i in range(n_rows):
+        v1 = matrix[i,:]
+        row_sim = sim_ij[i,:]
+        for j in range(i+1,len(matrix)):
+            min_index = np.argmin(row_sim)
+            min_value = np.nanmin(row_sim)
+            v2 = matrix[j,:]
+            sim = 1 - spatial.distance.cosine(v1,v2)
+            if (sim > min_value):
+                sim_ij[i,min_index] = sim
+                obj_ij[i,min_index] = j
+    
+    return [sim_ij,obj_ij]
+#    fname1 = "models/cbr_sim_" + str(process_number) + ".csv"
+#    fname2 = "models/cbr_index_" + str(process_number) + ".csv"
+#    np.savetxt(fname=fname1, X=sim_ij, delimiter='!', newline='\n', header='', footer='', comments='# ')
+#    np.savetxt(fname=fname2, X=obj_ij, delimiter='!', newline='\n', header='', footer='', comments='# ')
 #
-#    for i in range(n_rows):
-#        v1 = matrix[i,:]
-#        for j in range(i+1,len(matrix)):
-#            v2 = matrix[j,:]
-#            sij[i,j] = 1 - spatial.distance.cosine(v1,v2)
-#
-#    return sij
+#    return 0
