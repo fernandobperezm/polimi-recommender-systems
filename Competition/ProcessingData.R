@@ -10,24 +10,24 @@
 
 # Getting interactions.
 inter <- read.delim(
-    "~/Development/usb-projects/polimi-projects/Recommender Systems/Competition/interactions.csv"
+    "~/Development/usb-projects/polimi-projects/Recommender_Systems/Competition/interactions.csv"
     )
 
 
 # Getting the user profile.
 up <- read.delim(
-    "~/Development/usb-projects/polimi-projects/Recommender Systems/Competition/user_profile.csv",
+    "~/Development/usb-projects/polimi-projects/Recommender_Systems/Competition/user_profile.csv",
     na.strings = c("","NA","NULL")
     )
 
 # Getting target users.
 tu <- read.delim(
-    "~/Development/usb-projects/polimi-projects/Recommender Systems/Competition/originaldata/target_users.csv"
+    "~/Development/usb-projects/polimi-projects/Recommender_Systems/Competition/originaldata/target_users.csv"
     )
 
 # Getting item's profiles.
 ip <- read.delim(
-    "~/Development/usb-projects/polimi-projects/Recommender Systems/Competition//originaldata/item_profile.csv",
+    "~/Development/usb-projects/polimi-projects/Recommender_Systems/Competition//originaldata/item_profile.csv",
     na.strings = c("","NA","NULL")
     )
 

@@ -99,7 +99,7 @@ if args.columns is not None:
 #logger.info('The dataset user profile has {} users and {} items'.format(nusers_up, nitems_up))
 
 # read the items profiles.
-data_ip, titles_ip, tags_ip, no_items_ip = pi.read_dataset_ip(
+data_ip,no_items_ip, attr_ip = pi.read_dataset_ip(
                                   args.dataset[1],
                                   header=args.header,
                                   sep=args.sep,
@@ -109,8 +109,8 @@ data_ip, titles_ip, tags_ip, no_items_ip = pi.read_dataset_ip(
                                   rating_key=args.rating_key)
 
 
-nitems_ip, ntitles_ip,ntags_ip = len(data_ip), len(titles_ip), len(tags_ip)
-logger.info('The dataset items profile has {} items, {} titles and {} tags'.format(nitems_ip,ntitles_ip, ntags_ip))
+ntitles_ip,ntags_ip = len(attr_ip[0]), len(attr_ip[9])
+logger.info('The dataset items profile has {} items, {} titles and {} tags'.format(no_items_ip,ntitles_ip, ntags_ip))
 
 # Read the training set.
 #data_inter, users_inter,items_inter = pi.read_dataset_inter(
@@ -140,7 +140,7 @@ logger.info('The dataset items profile has {} items, {} titles and {} tags'.form
 #nusers_tu = len(users_tu)
 #logger.info('The dataset target users has {} users'.format(nusers_tu))
 
-data_ip = cbr.create_item_matrix(data_ip,titles_ip, tags_ip, no_items_ip)
+data_ip = cbr.create_item_matrix(data_ip, no_items_ip,attr_ip)
 
 
 ## compute the holdout split

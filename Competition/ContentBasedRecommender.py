@@ -47,8 +47,10 @@ class ContentBased(object):
         unseen_mask = np.in1d(self.pop, profile, assume_unique=True, invert=True)
         return self.pop[unseen_mask][:k]
 
-def create_item_matrix(data,title_dict,tags_dict, no_items):
+def create_item_matrix(data,no_items,attributes):
     matrix = []
+    title_dict = attributes[0]
+    tags_dict = attributes[9]
     tf = 1/12
     i_row = [0,0,0] # ID,Title, Tags.
     i = 0;

@@ -84,7 +84,7 @@ def read_dataset_ip(path, header=None, columns=None, user_key='user_id', item_ke
     attr = [titles,career_level,discipline_id,industry_id,country,region,latitude,\
             longitude, employment,tags,created_at,active_during_test]
 
-    return data, attr, no_items
+    return data, no_items, attr,
 
 def read_dataset_inter(path, header=None, columns=None, user_key='user_id', item_key='item_id', rating_key='rating', sep=','):
     logger.info('Reading {}'.format(path))
