@@ -13,14 +13,14 @@ import pdb
 
 from datetime import datetime as dt
 
-#from pyspark import SparkContext, SparkConf
+from pyspark import SparkContext, SparkConf
 
 logger = logging.getLogger(__name__)
 
 #conf = SparkConf().setAppName("RecSys").setMaster("spark://Fernandos-MacBook-Pro.local:7077")
 #conf = SparkConf().setAppName("RecSys")
-#conf = SparkConf()
-#sc = SparkContext(conf=conf)
+conf = SparkConf()
+sc = SparkContext(conf=conf)
 
 class ContentBased(object):
     """ContentBased recommender"""
@@ -81,7 +81,7 @@ def get_most_popular_attributes(items_matrix, items_ids):
     
 
 def create_item_matrix(data,no_items,attributes):
-    pdb.set_trace()
+#    pdb.set_trace()
     matrix = []
     title_dict = attributes[0]
     tags_dict = attributes[9]
@@ -127,62 +127,39 @@ def buildSimilaritiesMatrix(icm):
            )
     distData = sc.parallelize(data) # Parallelizing data.
     ##    Obtained from: http://apache-spark-user-list.1001560.n3.nabble.com/Computing-cosine-similiarity-using-pyspark-td6254.html
-    #sim = distData.cartesian(distData).map(lambda kv: ((kv[0][0],kv[1][0]),1-spatial.distance.cosine(kv[0][1],kv[1][1]))).collect()
     sim = distData\
             .cartesian(distData)\
             .filter(filtrar)\
-            .map(fun)\
+            .map(calculateCosine)\
             .collect()
+            
+    # Convert the data into a matrix.
+    # Extracted from: http://stackoverflow.com/questions/21446323/converting-a-dictionary-of-tuples-into-a-numpy-matrix
 
-#    sim = distData.cartesian(distData).filter(filtrar).fold(None,build).collect()
-#    sim = distData.cartesian(distData).fold({},build).collect()
+    keys = np.array( [key for dic in sim for key in dic.keys()] )
+    vals = np.array( [value for dic in sim for value in dic.values()] )
 
-    return sim
+    unq_keys, key_idx = np.unique(keys, return_inverse=True)
+    key_idx = key_idx.reshape(-1, 2)
 
-def fun(kv):
+    n = len(unq_keys)
+    sim = np.zeros((n, n) ,dtype=vals.dtype)
+    sim[key_idx[:,0], key_idx[: ,1]] = vals
+
+    return sim,unq_keys,key_idx
+
+def calculateCosine(kv):
     H = 3
     k1, v1, k2, v2 = kv[0][0],kv[0][1],kv[1][0],kv[1][1]
     
     sim = np.dot(v1,v2) / (np.linalg.norm(v1)*np.linalg.norm(v2) + H)
     
     return {(k1,k2):sim}
-#    return (k1,(k2,sim))
-
 
 def filtrar(kv):
     k1, v1, k2, v2 = kv[0][0],kv[0][1],kv[1][0],kv[1][1]
 
     return True if (k1 < k2) else False
-
-def build(accum, kv):
-    H = 3
-    k = 20
-    k1,v1,k2,v2 = kv[0][0],kv[0][1],kv[1][0],kv[1][1]
-
-    sim = np.dot(v1,v2) / (np.linalg.norm(v1)*np.linalg.norm(v2) + H)
-    
-    if (accum == None):
-        accum = dict()
-    
-    if (k1 in accum):
-        min_index = np.argmin(accum[k1])
-        min_value = accum[k1][min_index]
-    
-        if (sim > min_value):
-            accum[k1][min_index] = sim
-    else:
-        sim_ij = np.zeros(shape = (k))
-        sim_ij[0] = sim
-        accum[k1] = sim_ij
-
-    print(dict)
-        #print("KEY1: " + str(k1) + " - KEY2: " + str(k2))
-    #print("KEY1: " + str(k1) + " - KEY2: " + str(k2))
-
-    return accum
-
-
-
 
 
 ##################################### OPTION 2, using joblib.

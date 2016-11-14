@@ -157,10 +157,12 @@ items = np.sort(items)
 logger.info('Creating Item Similarities Matrix.')
 data_ip,no_items_ip,attr_ip  = cbr.get_most_popular_attributes(items_matrix = data_ip, items_ids = items)
 data_ip = cbr.create_item_matrix(data_ip, no_items_ip, attr_ip)
-data_ip = cbr.buildSimilaritiesMatrix(data_ip)
-
+data_ip,unq_jobs,jobs_idx = cbr.buildSimilaritiesMatrix(data_ip)
+print(data_ip)
+print(unq_jobs)
+print(jobs_idx)
 logger.info('Building the ContentBased recommender')
-recommender = ContentBased(data_ip)
+recommender = cbr.ContentBased(data_ip)
 
 
 
