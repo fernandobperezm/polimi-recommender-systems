@@ -37,17 +37,17 @@ def read_dataset_up(path, header=None, columns=None, user_key='user_id', item_ke
 def read_dataset_ip(path, header=None, columns=None, user_key='user_id', item_key='item_id', rating_key='rating', sep=','):
     dtype = {'id':np.uint64,
         'title':str,
-        'career_level':np.float64,
-        'discipline_id':np.float64,
-        'industry_id':np.uint8,
+        'career_level':str,
+        'discipline_id':str,
+        'industry_id':str,
         'country':str,
         'region':str,
-        'latitude':np.float64,
-        'longitude':np.float64,
-        'employment':np.uint8,
+        'latitude':str,
+        'longitude':str,
+        'employment':str,
         'tags':str,
-        'created_at':np.float64,
-        'active_during_test':np.uint8}
+        'created_at':str,
+        'active_during_test':str}
     
     data = pd.read_csv(path, header=header, names=columns, sep=sep, dtype=dtype)
     logger.info('Reading {}'.format(path))
@@ -69,7 +69,7 @@ def read_dataset_ip(path, header=None, columns=None, user_key='user_id', item_ke
     no_items = len(items)
 
     titles = titles.value_counts() # Zeros are NaN's
-    tags = tags.value_counts()
+    tags = tags.value_counts() # Zeros are NaN's 
     career_level = data['career_level'].value_counts() # 242 NaN's, all zeros are NaN's
     discipline_id = data['discipline_id'].value_counts() # No NaN.
     industry_id = data['industry_id'].value_counts() #No NaN.

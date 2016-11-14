@@ -154,8 +154,7 @@ items = np.sort(items)
 # Content-Based recommender.
 # By now, the content-based will only considerate top-popular recommendations.
 data_ip,no_items_ip,attr_ip  = cbr.get_most_popular_attributes(items_matrix = data_ip, items_ids = items)
-col_names = []
-data_ip = cbr.create_item_matrix(data_ip, no_items_ip, attr_ip,col_names)
+data_ip = cbr.create_item_matrix(data_ip, no_items_ip, attr_ip)
 logger.info('Building the ContentBased recommender')
 #recommender = ContentBased(data_ip)
 data_ip = cbr.buildSimilaritiesMatrix(data_ip)

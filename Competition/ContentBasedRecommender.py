@@ -13,14 +13,14 @@ import pdb
 
 from datetime import datetime as dt
 
-from pyspark import SparkContext, SparkConf
+#from pyspark import SparkContext, SparkConf
 
 logger = logging.getLogger(__name__)
 
 #conf = SparkConf().setAppName("RecSys").setMaster("spark://Fernandos-MacBook-Pro.local:7077")
 #conf = SparkConf().setAppName("RecSys")
-conf = SparkConf()
-sc = SparkContext(conf=conf)
+#conf = SparkConf()
+#sc = SparkContext(conf=conf)
 
 class ContentBased(object):
     """ContentBased recommender"""
@@ -84,34 +84,40 @@ def get_most_popular_attributes(items_matrix, items_ids):
     return items_matrix, no_items, attr
     
 
-def create_item_matrix(data,no_items,attributes,col_names):
+def create_item_matrix(data,no_items,attributes):
+    pdb.set_trace()
     matrix = []
     title_dict = attributes[0]
     tags_dict = attributes[9]
     tf = 1/12
-    i_row = [0,0,0] # ID,Title, Tags.
+    i_row = np.ndarray(shape=(13)) # ID, Attrs.
+    
     for index,row in data.iterrows():
         i_row[0] = row['id']
         
-        for job in row['title'].split(","):
-            if (job == "0"):
-                i_row[1] += 0
+        # Iteration over columns.
+        i = 1
+        for actual_attr_dict in attributes:
+            if ( (actual_attr_dict.name == "title") or (actual_attr_dict.name == "tags") ):
+                for job in row[actual_attr_dict.name].split(","):
+                    if (job == "0"):
+                        i_row[i] += 0
+                    else:
+                        idf = np.log10(no_items/ actual_attr_dict[job])
+                        i_row[i] += 1*tf*idf
             else:
-                idf = np.log10(no_items/ title_dict[job])
-                i_row[1] += 1*tf*idf
-        
-        for job in row['tags'].split(","):
-            if (job == "0"):
-                i_row[2] += 0
-            else:
-                idf = np.log10(no_items/ tags_dict[job])
-                i_row[2] += 1*tf*idf
+                attr = row[actual_attr_dict.name]
+                
+                if (attr == 0):
+                    i_row[i] += 0
+                else:
+                    idf = np.log10(no_items/ actual_attr_dict.ix[attr])
+                    i_row[i] += 1*tf*idf
+            i +=1
 
-        
-        
         matrix.append(i_row)
-        i_row = [0,0,0]
-                    
+        i_row = np.ndarray(shape=(13))
+
     matrix = np.array(matrix)
     return matrix
 #
