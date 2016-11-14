@@ -24,13 +24,10 @@ logger = logging.getLogger(__name__)
 
 class ContentBased(object):
     """ContentBased recommender"""
-    def __init__(self,icm):
+    def __init__(self,similarities):
         super(ContentBased, self).__init__()
         # Building the ICM matrix.
-        self.icm = icm
-    
-    def buildSimilaritiesMatrix(self): # the easiest one.
-        self.icm =  np.dot(self.icm,self.icm.transpose())
+        self.similarities = similarities
     
     def fit(self, train):
         if isinstance(train, sps.csr_matrix):
@@ -42,11 +39,11 @@ class ContentBased(object):
         item_pop = np.asarray(item_pop).squeeze() # necessary to convert it into a numpy.array of size (nitems,)
         self.pop = np.argsort(item_pop)[::-1]
 
-
-
     def recommend(self, profile, k=None, exclude_seen=True):
         unseen_mask = np.in1d(self.pop, profile, assume_unique=True, invert=True)
         return self.pop[unseen_mask][:k]
+
+
 
 def get_most_popular_attributes(items_matrix, items_ids):
     items_matrix = items_matrix[items_matrix['id'].isin(items_ids)]
@@ -55,7 +52,6 @@ def get_most_popular_attributes(items_matrix, items_ids):
     titles = items_matrix['title'].str.split(',').apply(pd.Series, 1).stack()
     titles.index = titles.index.droplevel(-1) # to line up with data's index
     titles.name = 'title' # needs a name to join
-
 
     # tags. // Based on StackOverflow.
     tags = items_matrix['tags'].str.split(',').apply(pd.Series, 1).stack()
@@ -149,8 +145,9 @@ def fun(kv):
     
     sim = np.dot(v1,v2) / (np.linalg.norm(v1)*np.linalg.norm(v2) + H)
     
-    return (k1,(k2,sim))
-    
+    return {(k1,k2):sim}
+#    return (k1,(k2,sim))
+
 
 def filtrar(kv):
     k1, v1, k2, v2 = kv[0][0],kv[0][1],kv[1][0],kv[1][1]
