@@ -5,7 +5,7 @@ import numpy as np
 import sklearn.metrics.pairwise as sk_pair
 import scipy.spatial as spatial
 import scipy.sparse as sps
-#import joblib
+import joblib
 
 import multiprocessing as mp
 
@@ -48,23 +48,49 @@ class ContentBased(object):
         unseen_mask = np.in1d(self.pop, profile, assume_unique=True, invert=True)
         return self.pop[unseen_mask][:k]
 
-def create_item_matrix(data,no_items,attributes):
+def get_most_popular_attributes(items_matrix, items_ids):
+    items_matrix = items_matrix[items_matrix['id'].isin(items_ids)]
+
+    # titles. // Based on StackOverflow.
+    titles = items_matrix['title'].str.split(',').apply(pd.Series, 1).stack()
+    titles.index = titles.index.droplevel(-1) # to line up with data's index
+    titles.name = 'title' # needs a name to join
+
+
+    # tags. // Based on StackOverflow.
+    tags = items_matrix['tags'].str.split(',').apply(pd.Series, 1).stack()
+    tags.index = tags.index.droplevel(-1) # to line up with data's index
+    tags.name = 'tags' # needs a name to join
+    
+    items = items_matrix['id'].unique()
+    no_items = len(items)
+
+    titles = titles.value_counts()
+    tags = tags.value_counts()
+    career_level = items_matrix['career_level'].value_counts() # 242 NaN's, all zeros are NaN's
+    discipline_id = items_matrix['discipline_id'].value_counts() # No NaN.
+    industry_id = items_matrix['industry_id'].value_counts() #No NaN.
+    country = items_matrix['country'].value_counts() # No NaN.
+    region = items_matrix['region'].value_counts() #No NaN.
+    latitude = items_matrix['latitude'].value_counts() # 12250 NaN's, all zeros are NaN's
+    longitude = items_matrix['longitude'].value_counts() # 12250 NaN's, all zeros are NaN's
+    employment = items_matrix['employment'].value_counts() # No NaN.
+    created_at = items_matrix['created_at'].value_counts() # 44285 NaN's, all zeros are NaN's
+    active_during_test = items_matrix['active_during_test'].value_counts() # No Nan.
+    
+    attr = [titles,career_level,discipline_id,industry_id,country,region,latitude,\
+            longitude, employment,tags,created_at,active_during_test]
+
+    return items_matrix, no_items, attr
+    
+
+def create_item_matrix(data,no_items,attributes,col_names):
     matrix = []
     title_dict = attributes[0]
     tags_dict = attributes[9]
     tf = 1/12
     i_row = [0,0,0] # ID,Title, Tags.
-    i = 0;
-    tags = -1
-    titles = -1
-    index_old = 0
     for index,row in data.iterrows():
-        if (index != index_old):
-            matrix.append(i_row)
-            index_old = index
-            i_row = [0,0,0]
-            i += 1
-
         i_row[0] = row['id']
         
         for job in row['title'].split(","):
@@ -80,40 +106,56 @@ def create_item_matrix(data,no_items,attributes):
             else:
                 idf = np.log10(no_items/ tags_dict[job])
                 i_row[2] += 1*tf*idf
+
+        
+        
+        matrix.append(i_row)
+        i_row = [0,0,0]
                     
     matrix = np.array(matrix)
     return matrix
 #
 def buildSimilaritiesMatrix(icm):
-    # Shrinking factor.
-#    H = 3
-    # Creating the python dict for parallelization.
+# Creating the python dict for parallelization.
     data = list(
-                zip(
-                    icm[0:,0],
-                    icm[:,1:]
-                )
+            zip(
+                icm[0:,0],
+                icm[:,1:]
+            )
            )
-
     distData = sc.parallelize(data) # Parallelizing data.
-##    Obtained from: http://apache-spark-user-list.1001560.n3.nabble.com/Computing-cosine-similiarity-using-pyspark-td6254.html
+    ##    Obtained from: http://apache-spark-user-list.1001560.n3.nabble.com/Computing-cosine-similiarity-using-pyspark-td6254.html
     #sim = distData.cartesian(distData).map(lambda kv: ((kv[0][0],kv[1][0]),1-spatial.distance.cosine(kv[0][1],kv[1][1]))).collect()
-#    sim = distData.cartesian(distData)\
-#            .map(\
-#                lambda kv:\
-#                    ((kv[0][0],kv[1][0]),\
-#                    np.dot(kv[0][1],kv[1][1]) / (np.linalg.norm(kv[0][1])*np.linalg.norm(kv[1][1]) + H)))\
-#            .collect()
+    sim = distData\
+            .cartesian(distData)\
+            .filter(filtrar)\
+            .map(fun)\
+            .collect()
 
-    sim = distData.cartesian(distData).filter(lambda kv: kv[0][0] < kv[1][0]).fold({},build).collect()
-
+#    sim = distData.cartesian(distData).filter(filtrar).fold(None,build).collect()
+#    sim = distData.cartesian(distData).fold({},build).collect()
 
     return sim
+
+def fun(kv):
+    H = 3
+    k1, v1, k2, v2 = kv[0][0],kv[0][1],kv[1][0],kv[1][1]
+    
+    sim = np.dot(v1,v2) / (np.linalg.norm(v1)*np.linalg.norm(v2) + H)
+    
+    return (k1,(k2,sim))
+    
+
+def filtrar(kv):
+    k1, v1, k2, v2 = kv[0][0],kv[0][1],kv[1][0],kv[1][1]
+
+    return True if (k1 < k2) else False
 
 def build(accum, kv):
     H = 3
     k = 20
     k1,v1,k2,v2 = kv[0][0],kv[0][1],kv[1][0],kv[1][1]
+
     sim = np.dot(v1,v2) / (np.linalg.norm(v1)*np.linalg.norm(v2) + H)
     
     if (accum == None):
@@ -129,6 +171,8 @@ def build(accum, kv):
         sim_ij = np.zeros(shape = (k))
         sim_ij[0] = sim
         accum[k1] = sim_ij
+
+    print(dict)
         #print("KEY1: " + str(k1) + " - KEY2: " + str(k2))
     #print("KEY1: " + str(k1) + " - KEY2: " + str(k2))
 
@@ -138,14 +182,14 @@ def build(accum, kv):
 
 
 
-###################################### OPTION 2, using joblib.
+##################################### OPTION 2, using joblib.
 #def buildSimilaritiesMatrix(icm):
 #    k = 50
 #    # Parallelization.
 #    num_cores = mp.cpu_count()
-#    n_rows = 199
+#    n_rows = 100
 #    # Split of data to each process.
-#    arguments = [(n_rows,icm[n_rows*i:,:],i,k) for i in range(0,844)]
+#    arguments = [(n_rows,icm[n_rows*i:,:],i,k) for i in range(0,5)]
 #    results = joblib.Parallel(n_jobs = num_cores)(joblib.delayed(calculateCosine) (row,mat,process_number,k) for row,mat,process_number,k in arguments)
 #
 ##    sim = tuple(results[i][0] for i in range(len(results)))
@@ -179,7 +223,7 @@ def build(accum, kv):
 #                sim_ij[i,min_index+1] = sim
 #                obj_ij[i,min_index+1] = j
 #
-#        logger.info('Training completed built in {}'.format(dt.now() - tic))
+#        #logger.info('Training completed built in {}'.format(dt.now() - tic))
 #
 #    fname1 = "models/cbr_sim_" + str(process_number) + ".csv"
 #    fname2 = "models/cbr_index_" + str(process_number) + ".csv"

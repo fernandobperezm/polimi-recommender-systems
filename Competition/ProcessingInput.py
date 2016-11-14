@@ -68,7 +68,7 @@ def read_dataset_ip(path, header=None, columns=None, user_key='user_id', item_ke
     items = data[item_key].unique()
     no_items = len(items)
 
-    titles = titles.value_counts()
+    titles = titles.value_counts() # Zeros are NaN's
     tags = tags.value_counts()
     career_level = data['career_level'].value_counts() # 242 NaN's, all zeros are NaN's
     discipline_id = data['discipline_id'].value_counts() # No NaN.
