@@ -13,14 +13,14 @@ import pdb
 
 from datetime import datetime as dt
 
-from pyspark import SparkContext, SparkConf
+#from pyspark import SparkContext, SparkConf
 
 logger = logging.getLogger(__name__)
 
 #conf = SparkConf().setAppName("RecSys").setMaster("spark://Fernandos-MacBook-Pro.local:7077")
 #conf = SparkConf().setAppName("RecSys")
-conf = SparkConf()
-sc = SparkContext(conf=conf)
+#conf = SparkConf()
+#sc = SparkContext(conf=conf)
 
 class ContentBased(object):
     """ContentBased recommender"""
@@ -29,15 +29,52 @@ class ContentBased(object):
         # Building the ICM matrix.
         self.similarities = similarities
     
-    def fit(self, train):
-        if isinstance(train, sps.csr_matrix):
-        # convert to csc matrix for faster column-wise sum
-            train_csc = train.tocsc()
-        else:
-            train_csc = train
-        item_pop = (train_csc > 0).sum(axis=0)	# this command returns a numpy.matrix of size (1, nitems)
-        item_pop = np.asarray(item_pop).squeeze() # necessary to convert it into a numpy.array of size (nitems,)
-        self.pop = np.argsort(item_pop)[::-1]
+    def fit(self, train,train_item_values,train_usr_values,item_idx,usr_idx):
+        baba = [0,[],[]] #USERID, ID_Rated_Items, Arrays of K-most-similar for each item.
+        for test_user in range(len(train_usr_values)):
+            # Get the indices in which user test_user has a rating in the sparse matrix.
+            user_rated_item_indices = train[test_user].indices
+            user_rated_items = []
+            
+            
+            # Get the list of items which the user has rated in the train set.
+            for item in user_rated_items:
+                k_most_similar_to_item = []
+                item_id = item_idx[train_item_values[item]]
+                user_rated_items.append(item_id)
+                try:
+                    item_row = self.similarities.loc[[item_id]]
+                
+                except:
+                    k_most_similar_to_item = []
+                
+                
+
+    
+#        for
+    
+    
+    
+#        if isinstance(train, sps.csr_matrix):
+#        # convert to csc matrix for faster column-wise sum
+#            train_csc = train.tocsc()
+#        else:
+#            train_csc = train
+#        
+#        
+#
+#
+#
+#
+#        self.user_rated_items =
+        pass
+
+
+
+
+#        item_pop = (train_csc > 0).sum(axis=0)	# this command returns a numpy.matrix of size (1, nitems)
+#        item_pop = np.asarray(item_pop).squeeze() # necessary to convert it into a numpy.array of size (nitems,)
+#        self.pop = np.argsort(item_pop)[::-1]
 
     def recommend(self, profile, k=None, exclude_seen=True):
         unseen_mask = np.in1d(self.pop, profile, assume_unique=True, invert=True)
@@ -83,8 +120,6 @@ def get_most_popular_attributes(items_matrix, items_ids):
 def create_item_matrix(data,no_items,attributes):
 #    pdb.set_trace()
     matrix = []
-    title_dict = attributes[0]
-    tags_dict = attributes[9]
     tf = 1/12
     i_row = np.ndarray(shape=(13)) # ID, Attrs.
     
@@ -145,6 +180,10 @@ def buildSimilaritiesMatrix(icm):
     n = len(unq_keys)
     sim = np.zeros((n, n) ,dtype=vals.dtype)
     sim[key_idx[:,0], key_idx[: ,1]] = vals
+    
+    sim += sim.T
+    
+    sim = pd.DataFrame(data=sim, index = unq_keys, columns= unq_keys)
 
     return sim,unq_keys,key_idx
 
