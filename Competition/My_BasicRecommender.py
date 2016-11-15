@@ -37,7 +37,7 @@ def holdout_split(data, perc=0.8, seed=1234):
 	return train_split, test_split
 
 def df_to_csr(df, nrows, ncols, user_key='user_idx', item_key='item_idx', rating_key='rating'):
-    pdb.set_trace()
+    #pdb.set_trace()
     rows = df[user_key].values
     columns = df[item_key].values
     ratings = df[rating_key].values
@@ -45,7 +45,8 @@ def df_to_csr(df, nrows, ncols, user_key='user_idx', item_key='item_idx', rating
     # using the 4th constructor of csr_matrix 
     # reference: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html
     sps_matrix = sps.csr_matrix((ratings, (rows, columns)), shape=shape)
-    return sps_matrix
+    print("Numero de filas: {}\n Numero de columnas: {}".format(rows,columns))
+    return sps_matrix,rows,columns
 
 
 
@@ -132,16 +133,16 @@ logger.info('The dataset interactions has {} users and {} items'.format(nusers_i
 #logger.info('The dataset target users has {} users'.format(nusers_tu))
 
 # compute the holdout split
-pdb.set_trace()
+#pdb.set_trace()
 logger.info('Computing the {:.0f}% holdout split'.format(args.holdout_perc*100))
 train_df, test_df = holdout_split(data_inter, perc=args.holdout_perc, seed=args.rnd_seed)
-train = df_to_csr(train_df, nrows=nusers_inter, ncols=nitems_inter, rating_key=args.rating_key)
+train, train_usr_values, train_item_values = df_to_csr(train_df, nrows=nusers_inter, ncols=nitems_inter, rating_key=args.rating_key)
 test = df_to_csr(test_df, nrows=nusers_inter, ncols=nitems_inter, rating_key=args.rating_key)
-pdb.set_trace()
+#pdb.set_trace()
 
 
 # k-Top-Popular recommender
-k = 500
+k = 1000
 logger.info('Building the top-popular recommender')
 recommender = mpr.TopPop()
 tic = dt.now()
@@ -165,7 +166,7 @@ data_ip = cbr.create_item_matrix(data_ip, no_items_ip, attr_ip)
 data_ip,unq_jobs,jobs_idx = cbr.buildSimilaritiesMatrix(data_ip)
 logger.info('Building the ContentBased recommender')
 recommender = cbr.ContentBased(data_ip)
-model = recommender.fit(train)
+model = recommender.fit(train,train_item_values, train_usr_values, items_inter, users_inter, k = 50)
 
 
 
